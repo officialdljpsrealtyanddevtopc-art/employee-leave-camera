@@ -4,43 +4,170 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
-  <title>Employee Leave Scanner</title>
+        content="width=device-width, initial-scale=1">
+  <title>DLJPS Employee Leave Scanner</title>
   <style>
+    * { box-sizing: border-box; }
     body {
       font-family: Arial, sans-serif;
-      background: #f4f6f9;
+      background: #f3f6fa;
       margin: 0;
+      padding: 20px;
+      color: #243449;
+    }
+    .card {
+      max-width: 500px;
+      margin: 20px auto;
       padding: 24px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 18px #00000012;
       text-align: center;
     }
-    .container {
-      background: white;
-      max-width: 450px;
-      margin: 40px auto;
-      padding: 28px;
-      border-radius: 14px;
-      box-shadow: 0 4px 16px #00000012;
+    h1 { color: #183b66; font-size: 24px; }
+    p { line-height: 1.5; }
+    video, img {
+      width: 100%;
+      border-radius: 10px;
+      margin: 15px 0;
     }
-    h1 { color: #183b66; }
-    p { color: #555; line-height: 1.6; }
-    .status {
-      background: #eaf4ff;
+    video { background: #152033; }
+    button {
+      display: block;
+      width: 100%;
       padding: 15px;
-      border-radius: 8px;
-      color: #174a7e;
+      margin-top: 12px;
+      background: #183b66;
+      color: white;
+      border: none;
+      border-radius: 9px;
+      font-size: 16px;
+      cursor: pointer;
     }
+    button.secondary { background: #697b90; }
+    button:disabled { opacity: .5; }
+    .hidden { display: none; }
+    #status { font-size: 14px; color: #555; }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="card">
     <h1>Employee Leave Scanner</h1>
     <p>DLJPS Realty and Development OPC</p>
-    <div class="status">
-      Camera webpage successfully installed!
-    </div>
-    <p>Camera and handwriting extraction
-       will be activated in the next step.</p>
+    <p>Capture the entire handwritten leave form.</p>
+
+    <video id="camera" autoplay playsinline
+           class="hidden"></video>
+
+    <img id="preview" alt="Captured leave form"
+         class="hidden">
+
+    <button id="openBtn" onclick="openCamera()">
+      Open Camera
+    </button>
+
+    <button id="captureBtn" class="hidden"
+            onclick="capturePhoto()">
+      Capture Form
+    </button>
+
+    <button id="retakeBtn"
+            class="secondary hidden"
+            onclick="openCamera()">
+      Retake Photo
+    </button>
+
+    <p id="status">Ready to scan.</p>
+    <canvas id="canvas" class="hidden"></canvas>
   </div>
+
+  <script>
+    let stream = null;
+
+    const video = document.getElementById("camera");
+    const preview = document.getElementById("preview");
+    const canvas = document.getElementById("canvas");
+    const statusText = document.getElementById("status");
+
+    const openBtn = document.getElementById("openBtn");
+    const captureBtn =
+      document.getElementById("captureBtn");
+    const retakeBtn =
+      document.getElementById("retakeBtn");
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+    }
+
+    async function openCamera() {
+      stopCamera();
+
+      if (!navigator.mediaDevices ||
+          !navigator.mediaDevices.getUserMedia) {
+        statusText.textContent =
+          "Camera access is not supported in this browser.";
+        return;
+      }
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" }
+          }
+        });
+
+        video.srcObject = stream;
+        await video.play();
+
+        video.classList.remove("hidden");
+        preview.classList.add("hidden");
+        openBtn.classList.add("hidden");
+        captureBtn.classList.remove("hidden");
+        retakeBtn.classList.add("hidden");
+
+        statusText.textContent =
+          "Position the complete form and tap Capture Form.";
+      } catch (error) {
+        statusText.textContent =
+          "Unable to open camera: " + error.message;
+      }
+    }
+
+    function capturePhoto() {
+      if (!stream || !video.videoWidth) {
+        statusText.textContent =
+          "Camera is not ready. Please try again.";
+        return;
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0);
+
+      preview.src = canvas.toDataURL(
+        "image/jpeg", 0.9
+      );
+
+      stopCamera();
+
+      video.classList.add("hidden");
+      preview.classList.remove("hidden");
+      captureBtn.classList.add("hidden");
+      retakeBtn.classList.remove("hidden");
+
+      statusText.textContent =
+        "Photo captured. Review the image. " +
+        "OCR connection will be added next.";
+    }
+
+    window.addEventListener("pagehide", stopCamera);
+  </script>
 </body>
 </html>
